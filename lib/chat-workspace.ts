@@ -37,6 +37,7 @@ export type OpenClawEnvelope =
 export type OpenClawPromptPayload = {
 	prompt: string;
 	course_id: string;
+	course_code?: string;
 	conversation_history: Array<{
 		agent?: string;
 		content: string;

@@ -247,6 +247,7 @@ function ChatInner() {
 							role,
 						})),
 						course_id: courseId,
+						course_code: courseId,
 						prompt: text,
 					};
 
