@@ -1,3 +1,14 @@
+/**
+ * @file src/app/layout.tsx
+ * @description Root layout component with metadata configuration
+ * @authors Ryan Smith <rysmith2113@gmail.com>
+ *          Kenneth Tran <kwtran09@gmail.com>
+ *          Simon Ramsey <ramsey2005s@gmail.com>
+ *          Obed Mavungu <obedmavungu1@gmail.com>
+ * @created March 29, 2026
+ * @copyright 2026 Syllabyte Team
+ */
+
 import type { Metadata } from "next";
 import "./globals.css";
 

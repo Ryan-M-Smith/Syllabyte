@@ -1,3 +1,14 @@
+/**
+ * @file eslint.config.mjs
+ * @description ESLint flat configuration for code quality and style enforcement
+ * @authors Ryan Smith <rysmith2113@gmail.com>
+ *          Kenneth Tran <kwtran09@gmail.com>
+ *          Simon Ramsey <ramsey2005s@gmail.com>
+ *          Obed Mavungu <obedmavungu1@gmail.com>
+ * @created March 29, 2026
+ * @copyright 2026 Syllabyte Team
+ */
+
 import { defineConfig, globalIgnores } from "eslint/config";
 import { fixupConfigRules, fixupPluginRules } from "@eslint/compat";
 import react from "eslint-plugin-react";
