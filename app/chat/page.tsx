@@ -25,6 +25,7 @@ import {
 	type Message,
 	type Mode,
 	type OpenClawEnvelope,
+	type OpenClawPromptPayload,
 	type UploadOutcome,
 } from "@/lib/chat-workspace";
 
@@ -239,19 +240,18 @@ function ChatInner() {
 				websocketRef.current = socket;
 
 				socket.onopen = () => {
+					const payload: OpenClawPromptPayload = {
+						conversation_history: messages.slice(-10).map(({ role, content, agent }) => ({
+							agent,
+							content,
+							role,
+						})),
+						course_id: courseId,
+						prompt: text,
+					};
+
 					socket.send(
-						JSON.stringify({
-							conversation_history: messages.slice(-10).map(({ role, content, agent }) => ({
-								agent,
-								content,
-								role,
-							})),
-							course_id: courseId,
-							message: text,
-							mode,
-							prompt: text,
-							type: "prompt",
-						})
+						JSON.stringify(payload)
 					);
 				};
 
@@ -426,7 +426,6 @@ function ChatInner() {
 							messages={messages}
 							mode={mode}
 							onInputChange={setInput}
-							onModeChange={setMode}
 							onPromptSelect={setInput}
 							onSend={() => {
 								void sendMessage();

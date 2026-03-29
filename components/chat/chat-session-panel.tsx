@@ -33,7 +33,6 @@ type ChatSessionPanelProps = {
 	messages: Message[];
 	mode: Mode;
 	onInputChange: (value: string) => void;
-	onModeChange: (mode: Mode) => void;
 	onPromptSelect: (prompt: string) => void;
 	onSend: () => void;
 	uploadingFiles: boolean;
@@ -52,11 +51,15 @@ export default function ChatSessionPanel({
 	messages,
 	mode,
 	onInputChange,
-	onModeChange,
 	onPromptSelect,
 	onSend,
 	uploadingFiles,
 }: ChatSessionPanelProps) {
+	const isStreamingAssistantBubble =
+		chatLoading && messages.length > 0 && messages[messages.length - 1]?.role === "assistant";
+	const currentModeConfig = MODE_CONFIG[mode];
+	const CurrentModeIcon = currentModeConfig.Icon;
+
 	return (
 		<>
 			<div className="border-b border-slate-200 bg-white/70 px-5 py-4 backdrop-blur-md sm:px-6">
@@ -75,22 +78,9 @@ export default function ChatSessionPanel({
 						)}
 					</div>
 
-					<div className="flex flex-wrap gap-2">
-						{(Object.entries(MODE_CONFIG) as [Mode, typeof MODE_CONFIG.qa][]).map(([key, cfg]) => (
-							<button
-								key={key}
-								onClick={() => onModeChange(key)}
-								className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-medium transition-all duration-200 ${
-									mode === key
-										? "gradient-bg border-transparent text-white shadow-sm"
-										: "border-slate-200 bg-transparent text-slate-500 hover:border-teal-300"
-								}`}
-								type="button"
-							>
-								<cfg.Icon size={12} />
-								{cfg.label}
-							</button>
-						))}
+					<div className="inline-flex items-center gap-2 self-start rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-600 shadow-sm lg:self-center">
+						<CurrentModeIcon size={12} />
+						Mode: {currentModeConfig.label}
 					</div>
 				</div>
 			</div>
@@ -102,7 +92,7 @@ export default function ChatSessionPanel({
 							<div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl gradient-bg shadow-lg shadow-teal-500/20 animate-float">
 								<Sparkles size={28} className="text-white" />
 							</div>
-							<h2 className="text-display text-3xl text-navy-900">{MODE_CONFIG[mode].desc}</h2>
+							<h2 className="text-display text-3xl text-navy-900">{currentModeConfig.desc}</h2>
 							<p className="mt-2 text-sm text-slate-400">
 								Ask about anything already in the {courseId} bucket, or add more files from the composer below.
 							</p>
@@ -121,7 +111,12 @@ export default function ChatSessionPanel({
 						</div>
 					)}
 
-					{messages.map((msg) => (
+					{messages.map((msg, index) => {
+						const isCurrentAssistantBubble =
+							isStreamingAssistantBubble && index === messages.length - 1 && msg.role === "assistant";
+						const showTypingDots = isCurrentAssistantBubble && !msg.content.trim();
+
+						return (
 						<div key={msg.id} className={`mb-6 animate-fade-up ${msg.role === "user" ? "flex justify-end" : ""}`}>
 							{msg.role === "user" ? (
 								<div className="max-w-[80%] rounded-2xl rounded-br-sm gradient-bg px-5 py-3 text-white shadow-sm">
@@ -133,14 +128,23 @@ export default function ChatSessionPanel({
 										<Sparkles size={12} className="text-white" />
 									</div>
 									<div className="rounded-2xl rounded-tl-sm border border-slate-200 bg-white px-5 py-3 shadow-sm">
-										<p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{msg.content}</p>
+										{showTypingDots ? (
+											<div className="flex items-center gap-1.5 py-1">
+												<div className="h-1.5 w-1.5 rounded-full bg-teal-400 animate-pulse-dot" />
+												<div className="h-1.5 w-1.5 rounded-full bg-teal-400 animate-pulse-dot" style={{ animationDelay: "0.2s" }} />
+												<div className="h-1.5 w-1.5 rounded-full bg-teal-400 animate-pulse-dot" style={{ animationDelay: "0.4s" }} />
+											</div>
+										) : (
+											<p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{msg.content}</p>
+										)}
 									</div>
 								</div>
 							)}
 						</div>
-					))}
+						);
+					})}
 
-					{chatLoading && (
+					{chatLoading && !isStreamingAssistantBubble && (
 						<div className="mb-6 flex animate-fade-up gap-3">
 							<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg gradient-bg shadow-sm">
 								<Sparkles size={12} className="text-white" />
@@ -188,7 +192,7 @@ export default function ChatSessionPanel({
 						/>
 					</div>
 
-					<div className="flex items-end gap-3">
+					<div className="flex justify-center items-start gap-3">
 						<div className="flex-1">
 							<textarea
 								ref={inputRef}
@@ -197,7 +201,7 @@ export default function ChatSessionPanel({
 								onKeyDown={handleKeyDown}
 								placeholder={`Ask about ${courseId}...`}
 								rows={1}
-								className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-navy-900 placeholder:text-slate-400 transition-all focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-100"
+								className="w-full h-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-2 py-3 text-sm text-navy-900 placeholder:text-slate-400 transition-all focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-100"
 								style={{ minHeight: "44px", maxHeight: "120px" }}
 								onInput={(e) => {
 									const target = e.target as HTMLTextAreaElement;
@@ -206,6 +210,7 @@ export default function ChatSessionPanel({
 								}}
 							/>
 						</div>
+						
 						<button
 							onClick={onSend}
 							disabled={!input.trim() || chatLoading}

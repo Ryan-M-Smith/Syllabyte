@@ -20,25 +20,80 @@ import CourseCard from "@/components/course-card";
 import Footer from "@/components/footer";
 import OpenClawStatus from "@/components/openclaw-status";
 
+type CourseApiRecord = {
+	course_code?: string;
+	course_id?: string;
+	course_name?: string;
+	name?: string;
+	professor?: string;
+	file_count?: number;
+	fileCount?: number;
+};
+
+type CoursesApiResponse = {
+	data?: {
+		courses?: CourseApiRecord[];
+	};
+	error?: string;
+	message?: string;
+	status?: string;
+	success?: boolean;
+	courses?: CourseApiRecord[];
+};
+
+function normalizeCoursesResponse(payload: CoursesApiResponse): Course[] {
+	const records = payload.data?.courses || payload.courses || [];
+
+	return records
+		.map((course) => ({
+			code: course.course_code || course.course_id || "",
+			fileCount: course.file_count ?? course.fileCount ?? 0,
+			name: course.course_name || course.name || "Untitled Course",
+			professor: course.professor || "Staff",
+		}))
+		.filter((course) => course.code);
+}
+
 export default function Home() {
 	const [courses, setCourses] = useState([] as Course[]);
 	const [online, setOnline] = useState<boolean | null>(null);
-	
-	const apiUrl = `${process.env.NEXT_PUBLIC_OPENCLAW_URL}/api`;
+	const [coursesError, setCoursesError] = useState<string | null>(null);
 
 	// Fetch courses dynamically from OpenClaw
 	useEffect(() => {
+		const controller = new AbortController();
+
 		(async () => {
-			const response = await fetch(`${apiUrl}/courses`);
-			const { courses } = await response.json();
-			
-			setCourses(courses.map((course: Record<string, any>) => ({
-				code: 		course.course_code,
-				name: 		course.course_name,
-				professor: 	course.professor,
-				fileCount: 	course.file_count
-			} as Course)));
+			try {
+				setCoursesError(null);
+				const response = await fetch("/api/openclaw/courses", {
+					cache: "no-store",
+					signal: controller.signal,
+				});
+
+				const rawText = await response.text();
+				const payload = rawText ? (JSON.parse(rawText) as CoursesApiResponse) : {};
+
+				if (!response.ok) {
+					throw new Error(
+						payload.error || payload.message || "Couldn't load courses from OpenClaw."
+					);
+				}
+
+				setCourses(normalizeCoursesResponse(payload));
+			} catch (error) {
+				if (controller.signal.aborted) {
+					return;
+				}
+
+				setCourses([]);
+				setCoursesError(
+					error instanceof Error ? error.message : "Couldn't load courses from OpenClaw."
+				);
+			}
 		})();
+
+		return () => controller.abort();
 	}, []);
 	
 	return (
@@ -115,6 +170,12 @@ export default function Home() {
 							{`${courses.length} active course${courses.length === 1 ? "" : "s"}`}
 						</span>
 					</div>
+
+					{coursesError && (
+						<div className="mb-3 rounded-2xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger">
+							{coursesError}
+						</div>
+					)}
 
 					<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 overflow-y-auto pr-1 -mr-1 min-h-0 flex-1 content-start">
 						{courses.map((course, i) => (

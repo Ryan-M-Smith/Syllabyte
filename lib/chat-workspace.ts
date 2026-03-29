@@ -34,6 +34,16 @@ export type OpenClawEnvelope =
 	| { type: "done"; agent: string; summary?: string }
 	| { type: "error"; agent?: string; message: string };
 
+export type OpenClawPromptPayload = {
+	prompt: string;
+	course_id: string;
+	conversation_history: Array<{
+		agent?: string;
+		content: string;
+		role: Message["role"];
+	}>;
+};
+
 export const MODE_CONFIG: Record<Mode, { label: string; Icon: typeof MessageCircle; desc: string }> = {
 	qa: {
 		label: "Chat",

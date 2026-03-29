@@ -14,11 +14,38 @@
 import { useEffect } from "react";
 import { VscChatSparkle, VscChatSparkleError } from "react-icons/vsc";
 
+type PingResponse = {
+	data?: {
+		openclaw?: string;
+		status?: string;
+	};
+	openclaw?: string;
+	status?: string;
+	success?: boolean;
+};
+
 interface OpenClawStatusProps {
 	online: boolean | null;
 	onOnlineChange: (online: boolean) => void;
 }
 
+function isOpenClawOnline(payload: PingResponse, fallbackStatus: boolean) {
+	if (typeof payload.success === "boolean") {
+		return payload.success;
+	}
+
+	const openClawState = payload.data?.openclaw || payload.openclaw;
+	if (typeof openClawState === "string") {
+		return ["ok", "online", "running", "healthy"].includes(openClawState.toLowerCase());
+	}
+
+	const status = payload.data?.status || payload.status;
+	if (typeof status === "string") {
+		return ["ok", "online", "running", "healthy", "success"].includes(status.toLowerCase());
+	}
+
+	return fallbackStatus;
+}
 
 export default function OpenClawStatus({ online, onOnlineChange }: OpenClawStatusProps) {
 	const pingInterval = 5 * 60 * 1000; // 5 minutes
@@ -36,8 +63,10 @@ export default function OpenClawStatus({ online, onOnlineChange }: OpenClawStatu
 
 	const ping = async () => {
 		try {
-			const response = await fetch("/api/openclaw/ping");
-			onOnlineChange(response.ok);
+			const response = await fetch("/api/openclaw/ping", { cache: "no-store" });
+			const rawText = await response.text();
+			const payload = rawText ? (JSON.parse(rawText) as PingResponse) : {};
+			onOnlineChange(isOpenClawOnline(payload, response.ok));
 		} catch {
 			onOnlineChange(false);
 		}
