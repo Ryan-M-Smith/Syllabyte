@@ -8,8 +8,8 @@ import {
   ArrowLeft,
   Send,
   MessageCircle,
-  Code,
   ClipboardCheck,
+  GraduationCap,
   Sparkles,
 } from "lucide-react";
 
@@ -21,26 +21,44 @@ type Message = {
   content: string;
 };
 
-type Mode = "qa" | "pair_programming" | "exam_prep";
+type Mode = "qa" | "exam_prep" | "grading";
 
 const MODE_CONFIG: Record<Mode, { label: string; Icon: typeof MessageCircle; desc: string }> =
   {
     qa: {
-      label: "Q&A",
+      label: "Chat",
       Icon: MessageCircle,
       desc: "Ask anything about your course",
-    },
-    pair_programming: {
-      label: "Pair Code",
-      Icon: Code,
-      desc: "Code together with course context",
     },
     exam_prep: {
       label: "Exam Prep",
       Icon: ClipboardCheck,
       desc: "Practice questions & review",
     },
+    grading: {
+      label: "Grading",
+      Icon: GraduationCap,
+      desc: "Grade submissions with rubric-based feedback",
+    },
   };
+
+const MODE_PROMPTS: Record<Mode, string[]> = {
+  qa: [
+    "What topics does this course cover?",
+    "Summarize the syllabus",
+    "Explain this week's core concept in simple terms",
+  ],
+  exam_prep: [
+    "Give me 5 likely exam questions",
+    "Quiz me on key definitions",
+    "Create a timed practice set for this unit",
+  ],
+  grading: [
+    "Create a grading rubric for this assignment",
+    "Grade this response and justify the score",
+    "Give feedback focused on improvement areas",
+  ],
+};
 
 function ChatInner() {
   const searchParams = useSearchParams();
@@ -123,14 +141,27 @@ function ChatInner() {
               Back
             </Link>
             <div className="w-px h-5 bg-slate-200" />
+            <img
+              src="/veritcal-2-mark_registered.png"
+              alt="Penn State shield"
+              className="w-4 h-4 object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
             <span className="font-mono font-semibold text-navy-800 tracking-tight">
               {courseId}
             </span>
             <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse-dot" />
           </div>
-          <span className="text-[10px] text-slate-400 font-mono hidden sm:block">
-            Syllabyte
-          </span>
+          <img
+            src="/horizontal-mark-registered-symbol.png"
+            alt="Penn State"
+            className="hidden sm:block h-6 w-auto object-contain"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
         </div>
 
         {/* Mode switcher */}
@@ -172,11 +203,7 @@ function ChatInner() {
                 </span>
               </p>
               <div className="flex flex-wrap justify-center gap-2">
-                {[
-                  "What topics does this course cover?",
-                  "Summarize the syllabus",
-                  "Give me a practice question",
-                ].map((q) => (
+                {MODE_PROMPTS[mode].map((q) => (
                   <button
                     key={q}
                     onClick={() => setInput(q)}
@@ -266,7 +293,7 @@ function ChatInner() {
             </button>
           </div>
           <p className="text-[10px] text-slate-400 mt-2 text-center">
-            Syllabyte · Gemini 3.1 Pro via OpenClaw on Raspberry Pi
+            Penn State AI Tutor · Gemini 3.1 Pro via OpenClaw on Raspberry Pi
           </p>
         </div>
       </div>

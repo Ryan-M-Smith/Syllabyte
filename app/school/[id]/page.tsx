@@ -7,139 +7,11 @@ import {
   ArrowLeft,
   FileText,
   ChevronRight,
-  GraduationCap,
   BookOpen,
   Users,
   Upload,
 } from "lucide-react";
-
-type Course = {
-  course_id: string;
-  name: string;
-  professor: string;
-  file_count: number;
-  files: string[];
-};
-
-type School = {
-  id: string;
-  name: string;
-  short: string;
-  color: string;
-  courses: Course[];
-};
-
-const SCHOOLS: Record<string, School> = {
-  "penn-state": {
-    id: "penn-state",
-    name: "Penn State University",
-    short: "PSU",
-    color: "from-navy-800 to-navy-600",
-    courses: [
-      {
-        course_id: "CS-101",
-        name: "Intro to Computer Science",
-        professor: "Dr. Smith",
-        file_count: 3,
-        files: ["syllabus.pdf", "lecture1.md", "assignment1.py"],
-      },
-      {
-        course_id: "MATH-201",
-        name: "Linear Algebra",
-        professor: "Dr. Johnson",
-        file_count: 2,
-        files: ["syllabus.pdf", "formulas.md"],
-      },
-      {
-        course_id: "ENG-150",
-        name: "Technical Writing",
-        professor: "Dr. Williams",
-        file_count: 4,
-        files: ["syllabus.pdf", "reading-list.md", "essay-guide.pdf", "rubric.md"],
-      },
-    ],
-  },
-  mit: {
-    id: "mit",
-    name: "Massachusetts Institute of Technology",
-    short: "MIT",
-    color: "from-red-700 to-red-500",
-    courses: [
-      {
-        course_id: "6.006",
-        name: "Introduction to Algorithms",
-        professor: "Prof. Demaine",
-        file_count: 5,
-        files: ["syllabus.pdf", "ps1.pdf", "ps2.pdf", "lecture-notes.md", "recitation1.md"],
-      },
-      {
-        course_id: "6.042",
-        name: "Mathematics for Computer Science",
-        professor: "Prof. Leighton",
-        file_count: 3,
-        files: ["syllabus.pdf", "problem-sets.pdf", "proofs-guide.md"],
-      },
-    ],
-  },
-  stanford: {
-    id: "stanford",
-    name: "Stanford University",
-    short: "Stanford",
-    color: "from-emerald-800 to-emerald-600",
-    courses: [
-      {
-        course_id: "CS-229",
-        name: "Machine Learning",
-        professor: "Prof. Ng",
-        file_count: 6,
-        files: ["syllabus.pdf", "lecture1.pdf", "ps1.pdf", "notes.md", "data.csv", "model.py"],
-      },
-      {
-        course_id: "CS-231N",
-        name: "Deep Learning for Computer Vision",
-        professor: "Prof. Li",
-        file_count: 4,
-        files: ["syllabus.pdf", "assignment1.ipynb", "lecture-slides.pptx", "references.md"],
-      },
-      {
-        course_id: "CS-224N",
-        name: "Natural Language Processing",
-        professor: "Prof. Manning",
-        file_count: 3,
-        files: ["syllabus.pdf", "hw1.pdf", "lecture-notes.md"],
-      },
-      {
-        course_id: "PHIL-181",
-        name: "Philosophy of Mind",
-        professor: "Prof. Searle",
-        file_count: 2,
-        files: ["syllabus.pdf", "reading-list.md"],
-      },
-    ],
-  },
-  cmu: {
-    id: "cmu",
-    name: "Carnegie Mellon University",
-    short: "CMU",
-    color: "from-rose-800 to-rose-600",
-    courses: [
-      {
-        course_id: "15-213",
-        name: "Introduction to Computer Systems",
-        professor: "Prof. O'Hallaron",
-        file_count: 4,
-        files: ["syllabus.pdf", "lab1.tar", "lecture1.pdf", "recitation1.md"],
-      },
-      {
-        course_id: "15-451",
-        name: "Algorithm Design and Analysis",
-        professor: "Prof. Sleator",
-        file_count: 3,
-        files: ["syllabus.pdf", "hw1.pdf", "notes.md"],
-      },
-    ],
-  },
-};
+import { PENN_STATE } from "@/config/schools";
 
 export default function SchoolPage({
   params,
@@ -147,11 +19,11 @@ export default function SchoolPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const school = SCHOOLS[id];
-
-  if (!school) {
+  if (id !== PENN_STATE.id) {
     notFound();
   }
+
+  const school = PENN_STATE;
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -169,9 +41,14 @@ export default function SchoolPage({
             className="flex items-center gap-2 text-slate-400 hover:text-navy-700 transition-colors text-sm"
           >
             <ArrowLeft size={14} />
-            <span className="font-semibold text-navy-700">
-              SYLLA<span className="text-teal-600">BYTE</span>
-            </span>
+            <img
+              src="/horizontal-mark-registered-symbol.png"
+              alt="Penn State"
+              className="h-7 w-auto object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
           </Link>
           <Link
             href="/upload"
@@ -185,9 +62,14 @@ export default function SchoolPage({
         {/* School header */}
         <div className="mb-12 animate-fade-up" style={{ animationDelay: "0.1s" }}>
           <div className="flex items-center gap-4 mb-4">
-            <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${school.color} flex items-center justify-center shadow-md`}>
-              <GraduationCap size={24} className="text-white" />
-            </div>
+            <img
+              src="/penn-state-shield.jpg"
+              alt="Penn State shield"
+              className="w-14 h-14 rounded-xl object-cover shadow-md ring-1 ring-slate-200"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
             <div>
               <h1 className="text-display text-4xl sm:text-5xl text-navy-900 leading-tight">
                 {school.short}
@@ -277,11 +159,17 @@ export default function SchoolPage({
         {/* Footer */}
         <footer className="mt-24 pt-8 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-navy-700">
-              SYLLA<span className="text-teal-600">BYTE</span>
-            </span>
+            <img
+              src="/veritcal-2-mark_registered.png"
+              alt="Penn State shield"
+              className="w-4 h-4 object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
+            <span className="font-semibold text-navy-700">Penn State</span>
             <span className="text-slate-300">·</span>
-            <span>Agentic AI for Higher Education</span>
+            <span>AI Academic Assistant</span>
           </div>
           <div className="font-mono">
             OpenClaw + Gemini 3.1 Pro · Raspberry Pi 5

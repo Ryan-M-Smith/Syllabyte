@@ -16,22 +16,22 @@
   --color-navy-100: #dfe9f2;
   --color-navy-50: #f0f4f8;
 
-  --color-teal-900: #053b35;
-  --color-teal-800: #0a5c52;
-  --color-teal-700: #0f7b6e;
-  --color-teal-600: #169e8c;
-  --color-teal-500: #1dbaa5;
-  --color-teal-400: #3dd4bd;
-  --color-teal-300: #72e4d2;
-  --color-teal-200: #aef0e5;
-  --color-teal-100: #d9f7f2;
-  --color-teal-50: #edfcf9;
+  --color-teal-900: #001022;
+  --color-teal-800: #001e44;
+  --color-teal-700: #003087;
+  --color-teal-600: #005fa9;
+  --color-teal-500: #1e6bb8;
+  --color-teal-400: #4a8fcd;
+  --color-teal-300: #79aedf;
+  --color-teal-200: #afcde9;
+  --color-teal-100: #d9e8f6;
+  --color-teal-50: #eef4fb;
 
-  --color-leaf-500: #2ecc71;
-  --color-leaf-400: #55d98c;
-  --color-leaf-300: #88e4ad;
-  --color-leaf-200: #bbf0d0;
-  --color-leaf-100: #def8e8;
+  --color-leaf-500: #2f5e9e;
+  --color-leaf-400: #4e79b8;
+  --color-leaf-300: #779ecc;
+  --color-leaf-200: #adc5df;
+  --color-leaf-100: #d7e3f0;
 
   --color-slate-900: #1a1d23;
   --color-slate-800: #2d3039;
@@ -96,18 +96,18 @@
   }
 
   .gradient-text {
-    background: linear-gradient(135deg, var(--color-navy-700) 0%, var(--color-teal-500) 50%, var(--color-leaf-500) 100%);
+    background: linear-gradient(135deg, var(--color-navy-800) 0%, var(--color-teal-600) 55%, var(--color-teal-400) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .gradient-bg {
-    background: linear-gradient(135deg, var(--color-navy-800) 0%, var(--color-teal-700) 60%, var(--color-teal-500) 100%);
+    background: linear-gradient(135deg, var(--color-navy-900) 0%, var(--color-teal-700) 60%, var(--color-teal-500) 100%);
   }
 
   .gradient-border {
-    border-image: linear-gradient(135deg, var(--color-navy-400), var(--color-teal-400), var(--color-leaf-400)) 1;
+    border-image: linear-gradient(135deg, var(--color-navy-500), var(--color-teal-500), var(--color-teal-300)) 1;
   }
 
   @keyframes fade-up {
@@ -149,7 +149,7 @@
   }
 
   .animate-shimmer {
-    background: linear-gradient(90deg, transparent 0%, rgba(29, 186, 165, 0.08) 50%, transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, rgba(0, 48, 135, 0.12) 50%, transparent 100%);
     background-size: 200% 100%;
     animation: shimmer 3s linear infinite;
   }

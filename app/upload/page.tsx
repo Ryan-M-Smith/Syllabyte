@@ -126,9 +126,24 @@ export default function UploadPage() {
         <header className="flex items-center justify-between mb-16 animate-fade-up">
           <Link href="/" className="flex items-center gap-2 text-slate-400 hover:text-navy-700 transition-colors text-sm">
             <ArrowLeft size={14} />
-            <span className="font-semibold text-navy-700">SYLLA<span className="text-teal-600">BYTE</span></span>
+            <img
+              src="/horizontal-mark-registered-symbol.png"
+              alt="Penn State"
+              className="h-7 w-auto object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
           </Link>
           <span className="inline-flex items-center gap-1.5 text-[10px] font-mono text-slate-400 bg-white/60 border border-slate-200 rounded-full px-3 py-1.5">
+            <img
+              src="/veritcal-2-mark_registered.png"
+              alt="Penn State shield"
+              className="w-3.5 h-3.5 object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
             <Upload size={10} />
             Professor Portal
           </span>
@@ -143,7 +158,7 @@ export default function UploadPage() {
           </h1>
           <p className="text-slate-500 leading-relaxed">
             Drop your syllabus, lecture notes, assignments, and code.
-            Syllabyte will index everything so students can query it instantly.
+            The Penn State tutor will index everything so students can query it instantly.
           </p>
         </div>
 
