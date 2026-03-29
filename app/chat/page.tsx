@@ -106,7 +106,7 @@ function ChatInner() {
 				formData.append("file", file);
 				formData.append("course_id", courseId);
 
-				const response = await fetch(`${OPEN_CLAW_API}/upload`, {
+				const response = await fetch(`/api/bucket-upload`, {
 					method: "POST",
 					body: formData,
 				});
@@ -202,8 +202,7 @@ function ChatInner() {
 				...prev,
 				{
 					role: "assistant",
-					content:
-						"Couldn't connect to the Raspberry Pi. Make sure OpenClaw is running on the network.",
+					content: "Couldn't connect to OpenClaw. Make sure the chat service is available.",
 				},
 			]);
 		} finally {

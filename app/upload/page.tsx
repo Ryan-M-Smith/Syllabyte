@@ -11,7 +11,7 @@
 
 "use client";
 
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -29,10 +29,6 @@ import {
   ArrowRight,
   PartyPopper,
 } from "lucide-react";
-
-const GATEWAY_URL =
-  process.env.NEXT_PUBLIC_OPENCLAW_URL || "http://openclaw.local:18789";
-
 type UploadResult = {
   filename: string;
   status: "success" | "error" | "uploading";
@@ -71,7 +67,7 @@ export default function UploadPage() {
         formData.append("file", files[i]);
         formData.append("course_id", courseId.trim().toUpperCase());
 
-        const res = await fetch(`${GATEWAY_URL}/api/upload`, {
+        const res = await fetch(`/api/bucket-upload`, {
           method: "POST",
           body: formData,
         });
@@ -81,13 +77,13 @@ export default function UploadPage() {
         uploadResults[i] = {
           filename: files[i].name,
           status: "success",
-          message: data.indexed ? "Uploaded & indexed" : "Uploaded",
+          message: data.path ? `Uploaded to ${data.path}` : "Uploaded",
         };
       } catch {
         uploadResults[i] = {
           filename: files[i].name,
           status: "error",
-          message: "Failed — check RPi connection",
+          message: "Failed — check GCS credentials and bucket access",
         };
       }
       setResults([...uploadResults]);
@@ -129,7 +125,7 @@ export default function UploadPage() {
   return (
     <div className="min-h-screen relative">
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 w-[700px] h-[500px] rounded-full bg-teal-100 opacity-30 blur-[140px] -translate-x-1/2 -translate-y-1/3" />
+        <div className="absolute top-0 left-1/2 h-125 w-175 rounded-full bg-teal-100 opacity-30 blur-[140px] -translate-x-1/2 -translate-y-1/3" />
       </div>
 
       <div className="relative z-10 max-w-2xl mx-auto px-6 py-12">
@@ -169,7 +165,7 @@ export default function UploadPage() {
           </h1>
           <p className="text-slate-500 leading-relaxed">
             Drop your syllabus, lecture notes, assignments, and code.
-            The Penn State tutor will index everything so students can query it instantly.
+            Files are uploaded to Google Cloud Storage for this course workspace.
           </p>
         </div>
 
@@ -235,7 +231,7 @@ export default function UploadPage() {
                 const result = results[i];
                 return (
                   <div key={`${file.name}-${i}`} className="flex items-center gap-3 px-5 py-3.5">
-                    <span className="flex-shrink-0">{getExtIcon(file.name)}</span>
+                    <span className="shrink-0">{getExtIcon(file.name)}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-navy-800 truncate">{file.name}</p>
                       <p className="text-xs text-slate-400">
@@ -285,7 +281,7 @@ export default function UploadPage() {
             {uploading ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
-                Uploading to Raspberry Pi...
+                Uploading to Google Cloud Storage...
               </>
             ) : (
               <>
@@ -296,7 +292,7 @@ export default function UploadPage() {
             )}
           </button>
           <p className="text-[10px] text-slate-400 mt-3 text-center font-mono">
-            courses/{courseId.trim().toUpperCase() || "COURSE-ID"}/
+            uploads/{courseId.trim().toUpperCase() || "COURSE-ID"}/
           </p>
         </div>
 

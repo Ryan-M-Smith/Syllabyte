@@ -11,67 +11,55 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-const GCS_API_BASE = "https://storage.googleapis.com/storage/v1";
-
-type GcsObject = {
-	contentType?: string;
-	mediaLink?: string;
-	name: string;
-	size?: string;
-	updated?: string;
-};
+import { getBucketName, getCourseUploadPrefix, getStorageClient } from "@/lib/gcs";
 
 export async function GET(request: NextRequest) {
-	const bucketName = process.env.GCP_BUCKET_NAME;
-	if (!bucketName) {
+	let bucketName: string;
+
+	try {
+		bucketName = getBucketName();
+	} catch (error) {
 		return NextResponse.json(
 			{
-				error: "Set GCP_BUCKET_NAME to enable the Google Cloud file explorer.",
+				error: error instanceof Error ? error.message : "Google Cloud Storage is not configured.",
 				files: [],
 			},
 			{ status: 503 }
 		);
 	}
 
-	const courseId = request.nextUrl.searchParams.get("courseId")?.trim().toUpperCase();
-	const explicitPrefix = request.nextUrl.searchParams.get("prefix")?.trim();
-	const configuredPrefix = process.env.GCP_BUCKET_PREFIX?.trim().replace(/^\/+|\/+$/g, "");
-
-	const prefixParts = [configuredPrefix, courseId, explicitPrefix].filter(
-		(value): value is string => Boolean(value)
-	);
-	const prefix = prefixParts.length > 0 ? `${prefixParts.join("/")}/` : "";
-
-	const gcsUrl = new URL(`${GCS_API_BASE}/b/${bucketName}/o`);
-	gcsUrl.searchParams.set("fields", "items(name,size,updated,contentType,mediaLink)");
-	if (prefix) {
-		gcsUrl.searchParams.set("prefix", prefix);
+	const courseId = request.nextUrl.searchParams.get("courseId")?.trim();
+	if (!courseId) {
+		return NextResponse.json(
+			{
+				error: "A courseId query parameter is required.",
+				files: [],
+			},
+			{ status: 400 }
+		);
 	}
 
+	const prefix = `${getCourseUploadPrefix(courseId)}/`;
+
 	try {
-		const response = await fetch(gcsUrl.toString(), { cache: "no-store" });
-		const payload = (await response.json()) as { items?: GcsObject[]; error?: { message?: string } };
+		const [objects] = await getStorageClient().bucket(bucketName).getFiles({
+			autoPaginate: false,
+			prefix,
+		});
 
-		if (!response.ok) {
-			return NextResponse.json(
-				{
-					error: payload.error?.message || "Unable to list Google Cloud bucket files.",
-					files: [],
-				},
-				{ status: response.status }
-			);
-		}
+		const files = objects
+			.filter((object) => object.name && !object.name.endsWith("/"))
+			.map((object) => {
+				const metadata = object.metadata;
 
-		const files = (payload.items ?? [])
-			.filter((item) => item.name && !item.name.endsWith("/"))
-			.map((item) => ({
-				contentType: item.contentType,
-				name: item.name.split("/").pop() || item.name,
-				path: item.name,
-				size: item.size ? Number(item.size) : undefined,
-				updated: item.updated,
-				url: item.mediaLink,
-			}))
+				return {
+					contentType: metadata.contentType,
+					name: object.name.split("/").pop() || object.name,
+					path: object.name,
+					size: metadata.size ? Number(metadata.size) : undefined,
+					updated: metadata.updated,
+				};
+			})
 			.sort((left, right) => {
 				if (!left.updated || !right.updated) {
 					return left.name.localeCompare(right.name);
@@ -81,10 +69,13 @@ export async function GET(request: NextRequest) {
 			});
 
 		return NextResponse.json({ bucketName, files, prefix });
-	} catch {
+	} catch (error) {
 		return NextResponse.json(
 			{
-				error: "Unable to reach Google Cloud Storage from the app server.",
+				error:
+					error instanceof Error
+						? error.message
+						: "Unable to reach Google Cloud Storage from the app server.",
 				files: [],
 			},
 			{ status: 502 }
