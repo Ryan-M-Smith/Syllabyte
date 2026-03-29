@@ -1,4 +1,4 @@
-import "@/styles/globals.css";
+import "./globals.css";
 import { Metadata, Viewport } from "next";
 
 import { Providers } from "./providers";
@@ -18,10 +18,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "white" },
-    { media: "(prefers-color-scheme: dark)", color: "black" },
-  ],
+  themeColor: { color: "white" },
 };
 
 export default function RootLayout({
@@ -30,15 +27,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html suppressHydrationWarning lang="en">
+    <html suppressHydrationWarning lang="en" className="light" style={{ colorScheme: "light" }}>
       <head />
       <body
         className={
-          `min-h-screen text-foreground bg-background font-sans antialiased
+          `min-h-screen text-slate-900 bg-slate-50 font-sans antialiased
           ${fontSans.variable}`
         }
       >
-        <Providers themeProps={{ attribute: "class", defaultTheme: "light", enableSystem: true }}>
+        <Providers themeProps={{ attribute: "class", defaultTheme: "light", enableSystem: false }}>
           {children}
         </Providers>
       </body>

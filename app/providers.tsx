@@ -11,5 +11,15 @@ export interface ProvidersProps {
 }
 
 export function Providers({ children, themeProps }: ProvidersProps) {
-  return <NextThemesProvider {...themeProps}>{children}</NextThemesProvider>;
+  const defaultThemeProps: ThemeProviderProps = {
+    attribute: "class",
+    defaultTheme: "light",
+    enableSystem: false,
+  };
+
+  return (
+    <NextThemesProvider {...defaultThemeProps} {...themeProps}>
+      {children}
+    </NextThemesProvider>
+  );
 }
