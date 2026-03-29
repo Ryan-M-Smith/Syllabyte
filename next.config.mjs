@@ -12,7 +12,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
 	async rewrites() {
-		const openClawUrl = process.env.OPEN_CLAW_URL || process.env.NEXT_PUBLIC_OPEN_CLAW_URL;
+		const openClawUrl =
+			process.env.OPENCLAW_URL ||
+			process.env.NEXT_PUBLIC_OPENCLAW_URL ||
+			process.env.OPEN_CLAW_URL ||
+			process.env.NEXT_PUBLIC_OPEN_CLAW_URL;
 
 		if (!openClawUrl) {
 			return [];

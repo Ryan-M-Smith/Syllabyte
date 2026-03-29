@@ -126,7 +126,12 @@ export function getOpenClawWebSocketUrl() {
 	}
 
 	const url = new URL(baseUrl);
-	url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+
+	if (url.protocol === "https:") {
+		url.protocol = "wss:";
+	} else if (url.protocol === "http:") {
+		url.protocol = "ws:";
+	}
 
 	return url.toString();
 }
