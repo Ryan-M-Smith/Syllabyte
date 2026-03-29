@@ -13,18 +13,23 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Upload, Wifi, Sparkles, ChevronRight, GraduationCap, BookOpen, Users, FileText } from "lucide-react";
+import { Upload, Sparkles, BookOpen } from "lucide-react";
 
 import { Course } from "@/lib/models";
+import CourseCard from "@/components/course-card";
 import Footer from "@/components/footer";
+import OpenClawStatus from "@/components/openclaw-status";
 
 export default function Home() {
 	const [courses, setCourses] = useState([] as Course[]);
+	const [online, setOnline] = useState<boolean | null>(null);
 	
+	const apiUrl = `${process.env.NEXT_PUBLIC_OPENCLAW_URL}/api`;
+
 	// Fetch courses dynamically from OpenClaw
 	useEffect(() => {
 		(async () => {
-			const response = await fetch(`${process.env.NEXT_PUBLIC_OPEN_CLAW_URL}/api/courses`);
+			const response = await fetch(`${apiUrl}/courses`);
 			const { courses } = await response.json();
 			
 			setCourses(courses.map((course: Record<string, any>) => ({
@@ -35,27 +40,15 @@ export default function Home() {
 			} as Course)));
 		})();
 	}, []);
-
-	useEffect(() => {
-		console.log(courses);
-	}, [courses]);
 	
 	return (
 		<div className="h-screen relative overflow-hidden">
 			{/* Background */}
 			<div className="fixed inset-0 pointer-events-none">
-				{/* Light mode */}
 				<div className="absolute inset-0 dark:hidden light">
 					<div className="absolute -top-32 -right-32 w-175 h-175 rounded-full bg-teal-100 opacity-50 blur-[140px]" />
 					<div className="absolute top-1/2 -left-48 w-125 h-125 rounded-full bg-navy-100 opacity-40 blur-[120px]" />
 					<div className="absolute -bottom-32 right-1/3 w-100 h-100 rounded-full bg-leaf-100 opacity-30 blur-[100px]" />
-				</div>
-				
-				{/* Dark mode */}
-				<div className="absolute inset-0 hidden dark:block dark">
-					<div className="absolute -top-32 -right-32 w-175 h-175 rounded-full bg-teal-900 opacity-30 blur-[140px]" />
-					<div className="absolute top-1/2 -left-48 w-125 h-125 rounded-full bg-navy-900 opacity-25 blur-[120px]" />
-					<div className="absolute -bottom-32 right-1/3 w-100 h-100 rounded-full bg-slate-900 opacity-20 blur-[100px]" />
 				</div>
 			</div>
 
@@ -80,10 +73,8 @@ export default function Home() {
 							<Upload size={14} />
 							Professor Portal
 						</Link>
-						<div className="hidden sm:flex items-center gap-2 text-xs text-slate-400 bg-white/60 border border-slate-200 rounded-full px-3 py-2">
-							<Wifi size={12} className="text-teal-500" />
-							<span className="font-mono">RPi online</span>
-						</div>
+
+						<OpenClawStatus online={online} onOnlineChange={setOnline}/>
 					</div>
 				</header>
 
@@ -115,61 +106,19 @@ export default function Home() {
 				{/* Courses grid */}
 				<div className="animate-fade-up flex-1 min-h-0 flex flex-col" style={{ animationDelay: "0.3s" }}>
 					<div className="flex items-center gap-3 mb-3">
-						<BookOpen size={14} className="text-slate-400" />
-						<h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">
+						<BookOpen size={14} className="text-slate-500" />
+						<h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
 							Penn State Courses
 						</h2>
 						<div className="flex-1 h-px bg-linear-to-r from-slate-200 to-transparent" />
-						<span className="text-xs text-slate-400 font-mono">
-							{courses.length} active courses
+						<span className="text-xs text-navy-700 font-mono">
+							{`${courses.length} active course${courses.length === 1 ? "" : "s"}`}
 						</span>
 					</div>
 
 					<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 overflow-y-auto pr-1 -mr-1 min-h-0 flex-1 content-start">
-						{courses.map(({ code, name, professor, fileCount }, i) => (
-							<Link
-								key={i}
-								href={`/chat?course=${code}`}
-								className="group block animate-fade-up"
-								style={{ animationDelay: `${0.35 + i * 0.08}s` }}
-							>
-								<div className="border border-slate-200 rounded-2xl p-4 bg-white/70 backdrop-blur-sm hover:border-teal-400 hover:shadow-lg hover:shadow-teal-100/40 transition-all duration-300 relative overflow-hidden">
-									<div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity animate-shimmer" />
-
-									<div className="relative">
-										<div className="flex items-start gap-3 mb-3">
-											<div className="w-10 h-10 rounded-xl bg-linear-to-br from-navy-900 to-navy-700 flex items-center justify-center shrink-0 shadow-sm">
-												<GraduationCap size={18} className="text-white" />
-											</div>
-											<div className="flex-1 min-w-0">
-												<h3 className="font-semibold text-navy-800 text-base leading-tight mb-0.5">
-													{code}
-												</h3>
-												<p className="text-xs text-slate-400 truncate">
-													{name}
-												</p>
-											</div>
-										</div>
-
-										<div className="flex items-center gap-3 mb-2">
-											<div className="flex items-center gap-1.5 text-xs text-slate-500">
-												<Users size={12} className="text-teal-500" />
-												<span className="font-mono font-medium">{professor}</span>
-											</div>
-											<div className="flex items-center gap-1.5 text-xs text-slate-500">
-												<FileText size={12} className="text-teal-500" />
-												<span className="font-mono font-medium">{fileCount}</span>
-												<span>files</span>
-											</div>
-										</div>
-
-										<div className="flex items-center gap-1.5 text-xs font-medium text-teal-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-											<span>Open chat</span>
-											<ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-										</div>
-									</div>
-								</div>
-							</Link>
+						{courses.map((course, i) => (
+							<CourseCard key={course.code} course={course} index={i}/>
 						))}
 					</div>
 				</div>

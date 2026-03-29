@@ -16,6 +16,8 @@
   --font-body: "DM Sans", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 
+  --color-danger: oklch(0.6532 0.2328 25.74);
+
   --color-navy-900: #0a1628;
   --color-navy-800: #112240;
   --color-navy-700: #1a3358;
