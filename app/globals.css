@@ -43,17 +43,32 @@
   --color-slate-200: #d5dae3;
   --color-slate-100: #ebeef3;
   --color-slate-50: #f5f7fa;
+
+  --background: #f5f7fa;
+  --foreground: #0a1628;
+
+  --color-background: #f5f7fa;
+  --color-foreground: #0a1628;
 }
 
 @layer base {
+  :root {
+    --background: #f5f7fa;
+    --foreground: #0a1628;
+  }
+
+  [class~="dark"] {
+    --background: #1a1d23;
+    --foreground: #f5f7fa;
+  }
   * {
     box-sizing: border-box;
   }
 
   body {
     font-family: "DM Sans", sans-serif;
-    background: var(--color-slate-50);
-    color: var(--color-navy-900);
+    background: var(--background);
+    color: var(--foreground);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
