@@ -11,7 +11,12 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { getBucketName, getCourseUploadPrefix, getStorageClient } from "@/lib/gcs";
+import {
+	getBucketName,
+	getCourseUploadPrefix,
+	hasStorageCredentialsConfigured,
+	getStorageClient,
+} from "@/lib/gcs";
 
 export async function GET(request: NextRequest) {
 	let bucketName: string;
@@ -41,6 +46,17 @@ export async function GET(request: NextRequest) {
 
 	const prefix = `${getCourseUploadPrefix(courseId)}/`;
 
+	if (!hasStorageCredentialsConfigured()) {
+		return NextResponse.json(
+			{
+				error:
+					"Google Cloud credentials are not configured. Set GOOGLE_APPLICATION_CREDENTIALS, GCP_SERVICE_ACCOUNT_KEY, or GCP_CLIENT_EMAIL/GCP_PRIVATE_KEY.",
+				files: [],
+			},
+			{ status: 503 }
+		);
+	}
+
 	try {
 		const [objects] = await getStorageClient().bucket(bucketName).getFiles({
 			autoPaginate: false,
@@ -48,7 +64,14 @@ export async function GET(request: NextRequest) {
 		});
 
 		const files = objects
-			.filter((object) => object.name && !object.name.endsWith("/"))
+			.filter((object) => {
+				if (!object.name || object.name.endsWith("/")) {
+					return false;
+				}
+
+				const fileName = object.name.split("/").pop();
+				return fileName !== "course_info.json";
+			})
 			.map((object) => {
 				const metadata = object.metadata;
 
@@ -70,15 +93,21 @@ export async function GET(request: NextRequest) {
 
 		return NextResponse.json({ bucketName, files, prefix });
 	} catch (error) {
+		const message =
+			error instanceof Error
+				? error.message
+				: "Unable to reach Google Cloud Storage from the app server.";
+
+		const isCredentialError = /credential|authentication|auth|private key|client_email|Could not load the default credentials/i.test(
+			message
+		);
+
 		return NextResponse.json(
 			{
-				error:
-					error instanceof Error
-						? error.message
-						: "Unable to reach Google Cloud Storage from the app server.",
+				error: message,
 				files: [],
 			},
-			{ status: 502 }
+			{ status: isCredentialError ? 503 : 502 }
 		);
 	}
 }

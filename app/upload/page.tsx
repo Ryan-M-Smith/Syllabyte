@@ -292,7 +292,7 @@ export default function UploadPage() {
             )}
           </button>
           <p className="text-[10px] text-slate-400 mt-3 text-center font-mono">
-            uploads/{courseId.trim().toUpperCase() || "COURSE-ID"}/
+            courses/{courseId.trim().toUpperCase() || "COURSE-ID"}/
           </p>
         </div>
 

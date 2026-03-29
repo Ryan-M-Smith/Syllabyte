@@ -11,7 +11,14 @@
 
 import { NextResponse } from "next/server";
 
-import { buildObjectPath, getBucketName, getCourseUploadPrefix, getStorageClient, normalizeCourseId } from "@/lib/gcs";
+import {
+	buildObjectPath,
+	getBucketName,
+	getCourseUploadPrefix,
+	hasStorageCredentialsConfigured,
+	getStorageClient,
+	normalizeCourseId,
+} from "@/lib/gcs";
 
 export async function POST(request: Request) {
 	let bucketName: string;
@@ -40,6 +47,16 @@ export async function POST(request: Request) {
 	const courseId = normalizeCourseId(courseIdValue);
 	const objectPath = buildObjectPath(courseId, file.name);
 
+	if (!hasStorageCredentialsConfigured()) {
+		return NextResponse.json(
+			{
+				error:
+					"Google Cloud credentials are not configured. Set GOOGLE_APPLICATION_CREDENTIALS, GCP_SERVICE_ACCOUNT_KEY, or GCP_CLIENT_EMAIL/GCP_PRIVATE_KEY.",
+			},
+			{ status: 503 }
+		);
+	}
+
 	try {
 		const buffer = Buffer.from(await file.arrayBuffer());
 		const bucket = getStorageClient().bucket(bucketName);
@@ -65,11 +82,16 @@ export async function POST(request: Request) {
 			success: true,
 		});
 	} catch (error) {
+		const message = error instanceof Error ? error.message : "Upload to Google Cloud Storage failed.";
+		const isCredentialError = /credential|authentication|auth|private key|client_email|Could not load the default credentials/i.test(
+			message
+		);
+
 		return NextResponse.json(
 			{
-				error: error instanceof Error ? error.message : "Upload to Google Cloud Storage failed.",
+				error: message,
 			},
-			{ status: 502 }
+			{ status: isCredentialError ? 503 : 502 }
 		);
 	}
 }
