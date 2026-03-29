@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Syllabyte · AI Peer Tutoring",
+  title: "OpenClaw · Course Pair Assistant",
   description:
-    "Agentic AI for Higher Education. Upload your syllabus, get a personal AI peer tutor — powered by OpenClaw on Raspberry Pi.",
+    "AI-powered course assistant running on a Raspberry Pi. Upload your syllabus, get a personal tutor.",
 };
 
 export default function RootLayout({
