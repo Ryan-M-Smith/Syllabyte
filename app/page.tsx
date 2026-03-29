@@ -52,9 +52,19 @@ export default function Home() {
     <div className="min-h-screen relative overflow-hidden">
       {/* Background */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute -top-32 -right-32 w-[700px] h-[700px] rounded-full bg-teal-100 opacity-50 blur-[140px]" />
-        <div className="absolute top-1/2 -left-48 w-[500px] h-[500px] rounded-full bg-navy-100 opacity-40 blur-[120px]" />
-        <div className="absolute -bottom-32 right-1/3 w-[400px] h-[400px] rounded-full bg-leaf-100 opacity-30 blur-[100px]" />
+        {/* Light mode */}
+        <div className="absolute inset-0 dark:hidden light">
+          <div className="absolute -top-32 -right-32 w-[700px] h-[700px] rounded-full bg-teal-100 opacity-50 blur-[140px]" />
+          <div className="absolute top-1/2 -left-48 w-[500px] h-[500px] rounded-full bg-navy-100 opacity-40 blur-[120px]" />
+          <div className="absolute -bottom-32 right-1/3 w-[400px] h-[400px] rounded-full bg-leaf-100 opacity-30 blur-[100px]" />
+        </div>
+        
+        {/* Dark mode */}
+        <div className="absolute inset-0 hidden dark:block dark">
+          <div className="absolute -top-32 -right-32 w-[700px] h-[700px] rounded-full bg-teal-900 opacity-30 blur-[140px]" />
+          <div className="absolute top-1/2 -left-48 w-[500px] h-[500px] rounded-full bg-navy-900 opacity-25 blur-[120px]" />
+          <div className="absolute -bottom-32 right-1/3 w-[400px] h-[400px] rounded-full bg-slate-900 opacity-20 blur-[100px]" />
+        </div>
       </div>
 
       <div className="relative z-10 max-w-6xl mx-auto px-6 py-10">
