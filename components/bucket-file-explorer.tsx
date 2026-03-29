@@ -68,8 +68,8 @@ export default function BucketFileExplorer({
 	onRefresh,
 }: BucketFileExplorerProps) {
 	return (
-		<aside className="border-b border-slate-200 bg-white/80 backdrop-blur-md lg:border-b-0 lg:border-r lg:min-h-0">
-			<div className="flex h-full flex-col">
+		<aside className="min-h-0 overflow-hidden border-b border-slate-200 bg-white/80 backdrop-blur-md lg:border-b-0 lg:border-r">
+			<div className="flex h-full min-h-0 flex-col">
 				<div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
 					<div>
 						<p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
@@ -88,14 +88,15 @@ export default function BucketFileExplorer({
 					</button>
 				</div>
 
-				<div className="flex-1 overflow-y-auto px-4 py-4">
+				<div className="flex-1 overflow-y-auto px-4 py-4 min-h-0">
 					<div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
 						<div className="flex items-center gap-2 text-slate-500">
 							<FolderTree size={14} className="text-teal-600" />
-							<span className="text-xs font-medium">Google Cloud Storage</span>
+							<span className="text-xs font-medium">Your Course Materials</span>
 						</div>
 						<p className="mt-2 text-xs leading-relaxed text-slate-400">
-							This explorer loads the current course materials directly from the configured GCP bucket.
+							View and download course materials your professor has made available. Syllabyte will
+							use these files to help you learn.
 						</p>
 					</div>
 

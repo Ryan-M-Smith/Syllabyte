@@ -15,8 +15,10 @@ export const OPEN_CLAW_API = "/api/openclaw";
 export const ACCEPTED_FILE_TYPES = ".pdf,.txt,.md,.py,.js,.ts,.java,.c,.cpp,.h,.html,.css,.json,.csv,.pptx,.docx,.ipynb,.png,.jpg,.jpeg";
 
 export type Message = {
+	id: string;
 	role: "user" | "assistant";
 	content: string;
+	agent?: string;
 };
 
 export type UploadOutcome = {
@@ -25,6 +27,12 @@ export type UploadOutcome = {
 };
 
 export type Mode = "qa" | "exam_prep" | "grading";
+
+export type OpenClawEnvelope =
+	| { type: "routing"; agent: string }
+	| { type: "token"; agent: string; content: string }
+	| { type: "done"; agent: string; summary?: string }
+	| { type: "error"; agent?: string; message: string };
 
 export const MODE_CONFIG: Record<Mode, { label: string; Icon: typeof MessageCircle; desc: string }> = {
 	qa: {
@@ -84,4 +92,41 @@ export function formatFileSize(size: number) {
 	}
 
 	return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function formatAgentLabel(agent: string | null) {
+	if (!agent) {
+		return null;
+	}
+
+	const labels: Record<string, string> = {
+		grader: "Grader",
+		manager: "Manager",
+		prepper: "Prepper",
+		tutor: "Tutor",
+	};
+
+	return labels[agent] || agent.charAt(0).toUpperCase() + agent.slice(1);
+}
+
+export function getModeForAgent(agent: string, currentMode: Mode): Mode {
+	const modeByAgent: Record<string, Mode> = {
+		grader: "grading",
+		prepper: "exam_prep",
+		tutor: "qa",
+	};
+
+	return modeByAgent[agent] || currentMode;
+}
+
+export function getOpenClawWebSocketUrl() {
+	const baseUrl = process.env.NEXT_PUBLIC_OPENCLAW_WS_URL || process.env.NEXT_PUBLIC_OPENCLAW_URL;
+	if (!baseUrl) {
+		return null;
+	}
+
+	const url = new URL(baseUrl);
+	url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+
+	return url.toString();
 }

@@ -11,9 +11,17 @@
 
 import { Paperclip, Send, Sparkles } from "lucide-react";
 
-import { ACCEPTED_FILE_TYPES, MODE_CONFIG, MODE_PROMPTS, type Message, type Mode } from "@/lib/chat-workspace";
+import {
+	ACCEPTED_FILE_TYPES,
+	MODE_CONFIG,
+	MODE_PROMPTS,
+	formatAgentLabel,
+	type Message,
+	type Mode,
+} from "@/lib/chat-workspace";
 
 type ChatSessionPanelProps = {
+	activeAgent: string | null;
 	bottomRef: React.RefObject<HTMLDivElement | null>;
 	chatLoading: boolean;
 	chatUploadInputRef: React.RefObject<HTMLInputElement | null>;
@@ -32,6 +40,7 @@ type ChatSessionPanelProps = {
 };
 
 export default function ChatSessionPanel({
+	activeAgent,
 	bottomRef,
 	chatLoading,
 	chatUploadInputRef,
@@ -58,6 +67,12 @@ export default function ChatSessionPanel({
 						<p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">
 							Bring in fresh study material, let the bucket library update, and continue the conversation without leaving the page.
 						</p>
+						{activeAgent && (
+							<div className="mt-3 inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-medium text-teal-700">
+								<span className="h-2 w-2 rounded-full bg-teal-500" />
+								Live agent: {formatAgentLabel(activeAgent)}
+							</div>
+						)}
 					</div>
 
 					<div className="flex flex-wrap gap-2">
@@ -106,8 +121,8 @@ export default function ChatSessionPanel({
 						</div>
 					)}
 
-					{messages.map((msg, i) => (
-						<div key={i} className={`mb-6 animate-fade-up ${msg.role === "user" ? "flex justify-end" : ""}`}>
+					{messages.map((msg) => (
+						<div key={msg.id} className={`mb-6 animate-fade-up ${msg.role === "user" ? "flex justify-end" : ""}`}>
 							{msg.role === "user" ? (
 								<div className="max-w-[80%] rounded-2xl rounded-br-sm gradient-bg px-5 py-3 text-white shadow-sm">
 									<p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>

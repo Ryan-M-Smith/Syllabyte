@@ -9,8 +9,12 @@
  * @copyright 2026 Syllabyte Team
  */
 
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import OpenClawStatus from "../openclaw-status";
 
 type WorkspaceHeaderProps = {
 	courseId: string;
@@ -18,6 +22,8 @@ type WorkspaceHeaderProps = {
 };
 
 export default function WorkspaceHeader({ courseId, uploadNotice }: WorkspaceHeaderProps) {
+	const [online, setOnline] = useState<boolean | null>(null);
+
 	return (
 		<header className="sticky top-0 z-30 border-b border-slate-200 bg-white/80 backdrop-blur-md">
 			<div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
@@ -38,8 +44,10 @@ export default function WorkspaceHeader({ courseId, uploadNotice }: WorkspaceHea
 							(e.target as HTMLImageElement).style.display = "none";
 						}}
 					/>
-					<span className="font-mono font-semibold tracking-tight text-navy-800">{courseId}</span>
-					<div className="h-2 w-2 rounded-full bg-teal-500 animate-pulse-dot" />
+					<span className="font-mono font-semibold tracking-tight text-navy-800 mr-10">{courseId}</span>
+					<div className="absolute right-1 flex justify-start items-center">
+						<OpenClawStatus online={online} onOnlineChange={setOnline} />
+					</div>
 				</div>
 
 				<div className="flex items-center gap-3">

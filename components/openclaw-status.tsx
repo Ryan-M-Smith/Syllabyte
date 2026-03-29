@@ -9,7 +9,7 @@
  * @copyright 2026 Syllabyte Team
  */
 
-"use cliunt";
+"use client";
 
 import { useEffect } from "react";
 import { VscChatSparkle, VscChatSparkleError } from "react-icons/vsc";
@@ -21,7 +21,6 @@ interface OpenClawStatusProps {
 
 
 export default function OpenClawStatus({ online, onOnlineChange }: OpenClawStatusProps) {
-	const apiUrl = `${process.env.NEXT_PUBLIC_OPENCLAW_URL}/api`;
 	const pingInterval = 5 * 60 * 1000; // 5 minutes
 	
 	// Check OpenClaw health status immediately on load, then every 5 minutes
@@ -37,7 +36,7 @@ export default function OpenClawStatus({ online, onOnlineChange }: OpenClawStatu
 
 	const ping = async () => {
 		try {
-			const response = await fetch(`${apiUrl}/ping`);
+			const response = await fetch("/api/openclaw/ping");
 			onOnlineChange(response.ok);
 		} catch {
 			onOnlineChange(false);

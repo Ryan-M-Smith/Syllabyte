@@ -18,7 +18,19 @@ import BucketFileExplorer, { type BucketFileItem } from "@/components/bucket-fil
 import ChatIntakePanel from "@/components/chat/chat-intake-panel";
 import ChatSessionPanel from "@/components/chat/chat-session-panel";
 import WorkspaceHeader from "@/components/chat/workspace-header";
-import { OPEN_CLAW_API, mergeFiles, type Message, type Mode, type UploadOutcome } from "@/lib/chat-workspace";
+import {
+	getModeForAgent,
+	getOpenClawWebSocketUrl,
+	mergeFiles,
+	type Message,
+	type Mode,
+	type OpenClawEnvelope,
+	type UploadOutcome,
+} from "@/lib/chat-workspace";
+
+function createMessageId(prefix: string) {
+	return `${prefix}-${crypto.randomUUID()}`;
+}
 
 function ChatInner() {
 	const searchParams = useSearchParams();
@@ -28,6 +40,7 @@ function ChatInner() {
 	const [input, setInput] = useState("");
 	const [chatLoading, setChatLoading] = useState(false);
 	const [mode, setMode] = useState<Mode>("qa");
+	const [activeAgent, setActiveAgent] = useState<string | null>(null);
 	const [hasStartedChat, setHasStartedChat] = useState(false);
 	const [stagedFiles, setStagedFiles] = useState<File[]>([]);
 	const [uploadingFiles, setUploadingFiles] = useState(false);
@@ -40,6 +53,7 @@ function ChatInner() {
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const stagedFileInputRef = useRef<HTMLInputElement>(null);
 	const chatUploadInputRef = useRef<HTMLInputElement>(null);
+	const websocketRef = useRef<WebSocket | null>(null);
 
 	useEffect(() => {
 		bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -50,6 +64,12 @@ function ChatInner() {
 			inputRef.current?.focus();
 		}
 	}, [hasStartedChat]);
+
+	useEffect(() => {
+		return () => {
+			websocketRef.current?.close();
+		};
+	}, []);
 
 	const loadBucketFiles = async () => {
 		setBucketLoading(true);
@@ -137,6 +157,7 @@ function ChatInner() {
 				setMessages((prev) => [
 					...prev,
 					{
+						id: createMessageId("assistant"),
 						role: "assistant",
 						content: `Added ${successCount} new study material file${successCount === 1 ? "" : "s"} to ${courseId}. Ask me anything about the updated library.`,
 					},
@@ -174,37 +195,155 @@ function ChatInner() {
 			return;
 		}
 
-		const userMsg: Message = { role: "user", content: text };
-		setMessages((prev) => [...prev, userMsg]);
-		setInput("");
-		setChatLoading(true);
-
-		try {
-			const res = await fetch(`${OPEN_CLAW_API}/chat`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					course_id: courseId,
-					message: text,
-					mode,
-					conversation_history: messages.slice(-10),
-				}),
-			});
-
-			if (!res.ok) throw new Error("Failed");
-			const data = await res.json();
-			setMessages((prev) => [
-				...prev,
-				{ role: "assistant", content: data.reply },
-			]);
-		} catch {
+		const socketUrl = getOpenClawWebSocketUrl();
+		if (!socketUrl) {
 			setMessages((prev) => [
 				...prev,
 				{
+					id: createMessageId("assistant"),
 					role: "assistant",
-					content: "Couldn't connect to OpenClaw. Make sure the chat service is available.",
+					content: "OpenClaw websocket URL is not configured.",
 				},
 			]);
+			return;
+		}
+
+		const userMsg: Message = { id: createMessageId("user"), role: "user", content: text };
+		const assistantMessageId = createMessageId("assistant");
+
+		setMessages((prev) => [
+			...prev,
+			userMsg,
+			{ id: assistantMessageId, role: "assistant", content: "", agent: activeAgent || undefined },
+		]);
+		setInput("");
+		setChatLoading(true);
+		setActiveAgent("manager");
+
+		const updateAssistantMessage = (updater: (message: Message) => Message) => {
+			setMessages((prev) =>
+				prev.map((message) =>
+					message.id === assistantMessageId ? updater(message) : message
+				)
+			);
+		};
+
+		try {
+			websocketRef.current?.close();
+
+			await new Promise<void>((resolve, reject) => {
+				const socket = new WebSocket(socketUrl);
+				let streamCompleted = false;
+				let sawToken = false;
+
+				websocketRef.current = socket;
+
+				socket.onopen = () => {
+					socket.send(
+						JSON.stringify({
+							conversation_history: messages.slice(-10).map(({ role, content, agent }) => ({
+								agent,
+								content,
+								role,
+							})),
+							course_id: courseId,
+							message: text,
+							mode,
+							prompt: text,
+							type: "prompt",
+						})
+					);
+				};
+
+				socket.onmessage = (event) => {
+					try {
+						const payload = JSON.parse(event.data as string) as OpenClawEnvelope;
+
+						if (payload.type === "routing") {
+							setActiveAgent(payload.agent);
+							setMode((currentMode) => getModeForAgent(payload.agent, currentMode));
+							updateAssistantMessage((message) => ({
+								...message,
+								agent: payload.agent,
+							}));
+							return;
+						}
+
+						if (payload.type === "token") {
+							sawToken = true;
+							setActiveAgent(payload.agent);
+							setMode((currentMode) => getModeForAgent(payload.agent, currentMode));
+							updateAssistantMessage((message) => ({
+								...message,
+								agent: payload.agent,
+								content: `${message.content}${payload.content}`,
+							}));
+							return;
+						}
+
+						if (payload.type === "done") {
+							streamCompleted = true;
+							setActiveAgent(payload.agent);
+							setMode((currentMode) => getModeForAgent(payload.agent, currentMode));
+							updateAssistantMessage((message) => ({
+								...message,
+								agent: payload.agent,
+								content: !sawToken && payload.summary ? payload.summary : message.content,
+							}));
+							socket.close();
+							resolve();
+							return;
+						}
+
+						if (payload.type === "error") {
+							streamCompleted = true;
+							setActiveAgent(payload.agent || "manager");
+							updateAssistantMessage((message) => ({
+								...message,
+								agent: payload.agent || message.agent,
+								content: payload.message,
+							}));
+							socket.close();
+							resolve();
+						}
+					} catch {
+						streamCompleted = true;
+						updateAssistantMessage((message) => ({
+							...message,
+							content: "Received an unreadable response from OpenClaw.",
+						}));
+						socket.close();
+						reject(new Error("Invalid websocket payload."));
+					}
+				};
+
+				socket.onerror = () => {
+					if (!streamCompleted) {
+						updateAssistantMessage((message) => ({
+							...message,
+							content: "Couldn't connect to OpenClaw. Make sure the websocket service is available.",
+						}));
+					}
+				};
+
+				socket.onclose = () => {
+					if (websocketRef.current === socket) {
+						websocketRef.current = null;
+					}
+
+					if (!streamCompleted) {
+						updateAssistantMessage((message) => ({
+							...message,
+							content:
+								message.content ||
+								"Connection closed before the agent finished responding.",
+						}));
+						resolve();
+					}
+				};
+			});
+		} catch {
+			setActiveAgent("manager");
 		} finally {
 			setChatLoading(false);
 		}
@@ -229,7 +368,7 @@ function ChatInner() {
 		<div className="min-h-screen bg-slate-50">
 			<WorkspaceHeader courseId={courseId} uploadNotice={uploadNotice} />
 
-			<div className="grid min-h-[calc(100vh-65px)] lg:grid-cols-[320px_minmax(0,1fr)]">
+			<div className="grid min-h-[calc(100vh-65px)] lg:h-[calc(100vh-65px)] lg:grid-cols-[320px_minmax(0,1fr)] overflow-hidden">
 				<BucketFileExplorer
 					courseId={courseId}
 					error={bucketError}
@@ -275,6 +414,7 @@ function ChatInner() {
 						/>
 					) : (
 						<ChatSessionPanel
+							activeAgent={activeAgent}
 							bottomRef={bottomRef}
 							chatLoading={chatLoading}
 							chatUploadInputRef={chatUploadInputRef}
