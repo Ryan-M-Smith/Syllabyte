@@ -65,8 +65,21 @@ export default function OpenClawStatus({ online, onOnlineChange }: OpenClawStatu
 		try {
 			const response = await fetch("/api/openclaw/ping", { cache: "no-store" });
 			const rawText = await response.text();
-			const payload = rawText ? (JSON.parse(rawText) as PingResponse) : {};
-			onOnlineChange(isOpenClawOnline(payload, response.ok));
+
+			let payload: PingResponse | null = null;
+			try {
+				payload = rawText ? (JSON.parse(rawText) as PingResponse) : null;
+			} catch {
+				payload = null;
+			}
+
+			const textFlag = rawText.trim().toLowerCase();
+			const inferredOnline =
+				payload !== null
+					? isOpenClawOnline(payload, response.ok)
+					: response.ok || textFlag === "ok" || textFlag === "ok%" || textFlag.includes("openclaw") || textFlag.includes("online");
+
+			onOnlineChange(inferredOnline);
 		} catch {
 			onOnlineChange(false);
 		}
