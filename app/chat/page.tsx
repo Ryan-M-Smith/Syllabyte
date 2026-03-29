@@ -19,12 +19,10 @@ import ChatIntakePanel from "@/components/chat/chat-intake-panel";
 import ChatSessionPanel from "@/components/chat/chat-session-panel";
 import WorkspaceHeader from "@/components/chat/workspace-header";
 import {
-	getModeForAgent,
 	getOpenClawWebSocketUrl,
 	mergeFiles,
 	type Message,
 	type Mode,
-	type OpenClawEnvelope,
 	type OpenClawPromptPayload,
 	type UploadOutcome,
 } from "@/lib/chat-workspace";
@@ -215,11 +213,11 @@ function ChatInner() {
 		setMessages((prev) => [
 			...prev,
 			userMsg,
-			{ id: assistantMessageId, role: "assistant", content: "", agent: activeAgent || undefined },
+			{ id: assistantMessageId, role: "assistant", content: "" },
 		]);
 		setInput("");
 		setChatLoading(true);
-		setActiveAgent("manager");
+		setActiveAgent(null);
 
 		const updateAssistantMessage = (updater: (message: Message) => Message) => {
 			setMessages((prev) =>
@@ -235,7 +233,6 @@ function ChatInner() {
 			await new Promise<void>((resolve, reject) => {
 				const socket = new WebSocket(socketUrl);
 				let streamCompleted = false;
-				let sawToken = false;
 
 				websocketRef.current = socket;
 
@@ -251,71 +248,19 @@ function ChatInner() {
 						prompt: text,
 					};
 
-					socket.send(
-						JSON.stringify(payload)
-					);
+					socket.send(JSON.stringify(payload));
 				};
 
 				socket.onmessage = (event) => {
-					try {
-						const payload = JSON.parse(event.data as string) as OpenClawEnvelope;
-
-						if (payload.type === "routing") {
-							setActiveAgent(payload.agent);
-							setMode((currentMode) => getModeForAgent(payload.agent, currentMode));
-							updateAssistantMessage((message) => ({
-								...message,
-								agent: payload.agent,
-							}));
-							return;
-						}
-
-						if (payload.type === "token") {
-							sawToken = true;
-							setActiveAgent(payload.agent);
-							setMode((currentMode) => getModeForAgent(payload.agent, currentMode));
-							updateAssistantMessage((message) => ({
-								...message,
-								agent: payload.agent,
-								content: `${message.content}${payload.content}`,
-							}));
-							return;
-						}
-
-						if (payload.type === "done") {
-							streamCompleted = true;
-							setActiveAgent(payload.agent);
-							setMode((currentMode) => getModeForAgent(payload.agent, currentMode));
-							updateAssistantMessage((message) => ({
-								...message,
-								agent: payload.agent,
-								content: !sawToken && payload.summary ? payload.summary : message.content,
-							}));
-							socket.close();
-							resolve();
-							return;
-						}
-
-						if (payload.type === "error") {
-							streamCompleted = true;
-							setActiveAgent(payload.agent || "manager");
-							updateAssistantMessage((message) => ({
-								...message,
-								agent: payload.agent || message.agent,
-								content: payload.message,
-							}));
-							socket.close();
-							resolve();
-						}
-					} catch {
-						streamCompleted = true;
-						updateAssistantMessage((message) => ({
-							...message,
-							content: "Received an unreadable response from OpenClaw.",
-						}));
-						socket.close();
-						reject(new Error("Invalid websocket payload."));
+					if (typeof event.data !== "string") {
+						return;
 					}
+
+					setActiveAgent(null);
+					updateAssistantMessage((message) => ({
+						...message,
+						content: `${message.content}${event.data}`,
+					}));
 				};
 
 				socket.onerror = () => {
@@ -328,23 +273,22 @@ function ChatInner() {
 				};
 
 				socket.onclose = () => {
+					streamCompleted = true;
 					if (websocketRef.current === socket) {
 						websocketRef.current = null;
 					}
 
-					if (!streamCompleted) {
-						updateAssistantMessage((message) => ({
-							...message,
-							content:
-								message.content ||
-								"Connection closed before the agent finished responding.",
-						}));
-						resolve();
-					}
+					updateAssistantMessage((message) => ({
+						...message,
+						content:
+							message.content ||
+							"Connection closed before the agent finished responding.",
+					}));
+					resolve();
 				};
 			});
 		} catch {
-			setActiveAgent("manager");
+			setActiveAgent(null);
 		} finally {
 			setChatLoading(false);
 		}

@@ -10,6 +10,7 @@
  */
 
 import { Paperclip, Send, Sparkles } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 import {
 	ACCEPTED_FILE_TYPES,
@@ -135,7 +136,9 @@ export default function ChatSessionPanel({
 												<div className="h-1.5 w-1.5 rounded-full bg-teal-400 animate-pulse-dot" style={{ animationDelay: "0.4s" }} />
 											</div>
 										) : (
-											<p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{msg.content}</p>
+											<div className="prose prose-sm max-w-none text-slate-800">
+												<ReactMarkdown>{msg.content}</ReactMarkdown>
+											</div>
 										)}
 									</div>
 								</div>
