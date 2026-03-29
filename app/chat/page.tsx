@@ -1,6 +1,6 @@
 /**
  * @file app/chat/page.tsx
- * @description Chat interface page for the AI-powered course assistant
+ * @description Study material intake and chat workspace for the AI-powered course assistant
  * @authors Ryan Smith <rysmith2113@gmail.com>
  *          Kenneth Tran <kwtran09@gmail.com>
  *          Simon Ramsey <ramsey2005s@gmail.com>
@@ -11,317 +11,306 @@
 
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import Link from "next/link";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
-import {
-  ArrowLeft,
-  Send,
-  MessageCircle,
-  ClipboardCheck,
-  GraduationCap,
-  Sparkles,
-} from "lucide-react";
 
-const GATEWAY_URL =
-  process.env.NEXT_PUBLIC_OPENCLAW_URL || "http://openclaw.local:18789";
-
-type Message = {
-  role: "user" | "assistant";
-  content: string;
-};
-
-type Mode = "qa" | "exam_prep" | "grading";
-
-const MODE_CONFIG: Record<Mode, { label: string; Icon: typeof MessageCircle; desc: string }> =
-  {
-    qa: {
-      label: "Chat",
-      Icon: MessageCircle,
-      desc: "Ask anything about your course",
-    },
-    exam_prep: {
-      label: "Exam Prep",
-      Icon: ClipboardCheck,
-      desc: "Practice questions & review",
-    },
-    grading: {
-      label: "Grading",
-      Icon: GraduationCap,
-      desc: "Grade submissions with rubric-based feedback",
-    },
-  };
-
-const MODE_PROMPTS: Record<Mode, string[]> = {
-  qa: [
-    "What topics does this course cover?",
-    "Summarize the syllabus",
-    "Explain this week's core concept in simple terms",
-  ],
-  exam_prep: [
-    "Give me 5 likely exam questions",
-    "Quiz me on key definitions",
-    "Create a timed practice set for this unit",
-  ],
-  grading: [
-    "Create a grading rubric for this assignment",
-    "Grade this response and justify the score",
-    "Give feedback focused on improvement areas",
-  ],
-};
+import BucketFileExplorer, { type BucketFileItem } from "@/components/bucket-file-explorer";
+import ChatIntakePanel from "@/components/chat/chat-intake-panel";
+import ChatSessionPanel from "@/components/chat/chat-session-panel";
+import WorkspaceHeader from "@/components/chat/workspace-header";
+import { OPEN_CLAW_API, mergeFiles, type Message, type Mode, type UploadOutcome } from "@/lib/chat-workspace";
 
 function ChatInner() {
-  const searchParams = useSearchParams();
-  const courseId = searchParams.get("course") || "CS-101";
+	const searchParams = useSearchParams();
+	const courseId = (searchParams.get("course") || "CS-101").toUpperCase();
 
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<Mode>("qa");
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+	const [messages, setMessages] = useState<Message[]>([]);
+	const [input, setInput] = useState("");
+	const [chatLoading, setChatLoading] = useState(false);
+	const [mode, setMode] = useState<Mode>("qa");
+	const [hasStartedChat, setHasStartedChat] = useState(false);
+	const [stagedFiles, setStagedFiles] = useState<File[]>([]);
+	const [uploadingFiles, setUploadingFiles] = useState(false);
+	const [uploadNotice, setUploadNotice] = useState<string | null>(null);
+	const [dragActive, setDragActive] = useState(false);
+	const [bucketFiles, setBucketFiles] = useState<BucketFileItem[]>([]);
+	const [bucketLoading, setBucketLoading] = useState(true);
+	const [bucketError, setBucketError] = useState<string | null>(null);
+	const bottomRef = useRef<HTMLDivElement>(null);
+	const inputRef = useRef<HTMLTextAreaElement>(null);
+	const stagedFileInputRef = useRef<HTMLInputElement>(null);
+	const chatUploadInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+	useEffect(() => {
+		bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+	}, [messages]);
 
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+	useEffect(() => {
+		if (hasStartedChat) {
+			inputRef.current?.focus();
+		}
+	}, [hasStartedChat]);
 
-  const sendMessage = async () => {
-    const text = input.trim();
-    if (!text || loading) return;
+	const loadBucketFiles = async () => {
+		setBucketLoading(true);
+		setBucketError(null);
 
-    const userMsg: Message = { role: "user", content: text };
-    setMessages((prev) => [...prev, userMsg]);
-    setInput("");
-    setLoading(true);
+		try {
+			const response = await fetch(`/api/bucket-files?courseId=${encodeURIComponent(courseId)}`, {
+				cache: "no-store",
+			});
+			const data = (await response.json()) as {
+				error?: string;
+				files?: BucketFileItem[];
+			};
 
-    try {
-      const res = await fetch(`${GATEWAY_URL}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          course_id: courseId,
-          message: text,
-          mode,
-          conversation_history: messages.slice(-10),
-        }),
-      });
+			if (!response.ok) {
+				throw new Error(data.error || "Couldn't load course files from Google Cloud Storage.");
+			}
 
-      if (!res.ok) throw new Error("Failed");
-      const data = await res.json();
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: data.reply },
-      ]);
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content:
-            "Couldn't connect to the Raspberry Pi. Make sure OpenClaw is running on the network.",
-        },
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  };
+			setBucketFiles(data.files || []);
+		} catch (error) {
+			setBucketFiles([]);
+			setBucketError(
+				error instanceof Error
+					? error.message
+					: "Couldn't load course files from Google Cloud Storage."
+			);
+		} finally {
+			setBucketLoading(false);
+		}
+	};
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
+	useEffect(() => {
+		void loadBucketFiles();
+	}, [courseId]);
 
-  return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
-      {/* Top bar */}
-      <header className="border-b border-slate-200 bg-white/80 backdrop-blur-md sticky top-0 z-20">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="flex items-center gap-1.5 text-slate-400 hover:text-navy-700 transition-colors text-sm"
-            >
-              <ArrowLeft size={14} />
-              Back
-            </Link>
-            <div className="w-px h-5 bg-slate-200" />
-            <img
-              src="/veritcal-2-mark_registered.png"
-              alt="Penn State shield"
-              className="w-4 h-4 object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none";
-              }}
-            />
-            <span className="font-mono font-semibold text-navy-800 tracking-tight">
-              {courseId}
-            </span>
-            <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse-dot" />
-          </div>
-          <img
-            src="/horizontal-mark-registered-symbol.png"
-            alt="Penn State"
-            className="hidden sm:block h-6 w-auto object-contain"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = "none";
-            }}
-          />
-        </div>
+	const uploadFiles = async (
+		filesToUpload: File[],
+		options?: { announceInChat?: boolean; clearStaged?: boolean }
+	): Promise<UploadOutcome> => {
+		if (filesToUpload.length === 0) {
+			return { failureCount: 0, successCount: 0 };
+		}
 
-        {/* Mode switcher */}
-        <div className="max-w-3xl mx-auto px-4 pb-3 flex gap-2">
-          {(Object.entries(MODE_CONFIG) as [Mode, typeof MODE_CONFIG.qa][]).map(
-            ([key, cfg]) => (
-              <button
-                key={key}
-                onClick={() => setMode(key)}
-                className={`inline-flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-full border transition-all duration-200 cursor-pointer font-medium ${
-                  mode === key
-                    ? "gradient-bg text-white border-transparent shadow-sm"
-                    : "bg-transparent text-slate-500 border-slate-200 hover:border-teal-300"
-                }`}
-              >
-                <cfg.Icon size={12} />
-                {cfg.label}
-              </button>
-            )
-          )}
-        </div>
-      </header>
+		setUploadingFiles(true);
+		setUploadNotice(null);
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-4 py-8">
-          {messages.length === 0 && (
-            <div className="text-center py-20 animate-fade-up">
-              <div className="w-16 h-16 rounded-2xl gradient-bg flex items-center justify-center mx-auto mb-6 shadow-lg shadow-teal-500/20 animate-float">
-                <Sparkles size={28} className="text-white" />
-              </div>
-              <h2 className="text-display text-3xl text-navy-900 mb-2">
-                {MODE_CONFIG[mode].desc}
-              </h2>
-              <p className="text-sm text-slate-400 mb-10">
-                Course materials loaded for{" "}
-                <span className="font-mono font-semibold text-navy-700">
-                  {courseId}
-                </span>
-              </p>
-              <div className="flex flex-wrap justify-center gap-2">
-                {MODE_PROMPTS[mode].map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => setInput(q)}
-                    className="text-sm text-slate-600 bg-white border border-slate-200 rounded-full px-4 py-2.5 hover:border-teal-300 hover:text-teal-700 transition-all cursor-pointer"
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+		let successCount = 0;
+		let failureCount = 0;
+		const failedFiles: File[] = [];
 
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`mb-6 animate-fade-up ${
-                msg.role === "user" ? "flex justify-end" : ""
-              }`}
-            >
-              {msg.role === "user" ? (
-                <div className="gradient-bg text-white rounded-2xl rounded-br-sm px-5 py-3 max-w-[80%] shadow-sm">
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                    {msg.content}
-                  </p>
-                </div>
-              ) : (
-                <div className="flex gap-3 max-w-[90%]">
-                  <div className="w-7 h-7 rounded-lg gradient-bg flex items-center justify-center flex-shrink-0 mt-1 shadow-sm">
-                    <Sparkles size={12} className="text-white" />
-                  </div>
-                  <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-sm px-5 py-3 shadow-sm">
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap text-slate-800">
-                      {msg.content}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+		for (const file of filesToUpload) {
+			try {
+				const formData = new FormData();
+				formData.append("file", file);
+				formData.append("course_id", courseId);
 
-          {loading && (
-            <div className="flex gap-3 mb-6 animate-fade-up">
-              <div className="w-7 h-7 rounded-lg gradient-bg flex items-center justify-center flex-shrink-0 shadow-sm">
-                <Sparkles size={12} className="text-white" />
-              </div>
-              <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-sm px-5 py-4 shadow-sm">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse-dot" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse-dot" style={{ animationDelay: "0.2s" }} />
-                  <div className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse-dot" style={{ animationDelay: "0.4s" }} />
-                </div>
-              </div>
-            </div>
-          )}
+				const response = await fetch(`${OPEN_CLAW_API}/upload`, {
+					method: "POST",
+					body: formData,
+				});
 
-          <div ref={bottomRef} />
-        </div>
-      </div>
+				if (!response.ok) {
+					throw new Error(`Upload failed with status ${response.status}`);
+				}
 
-      {/* Input */}
-      <div className="border-t border-slate-200 bg-white/80 backdrop-blur-md sticky bottom-0">
-        <div className="max-w-3xl mx-auto px-4 py-4">
-          <div className="flex items-end gap-3">
-            <div className="flex-1">
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={`Ask about ${courseId}...`}
-                rows={1}
-                className="w-full resize-none border border-slate-200 rounded-xl px-4 py-3 text-sm text-navy-900 placeholder:text-slate-400 focus:outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-100 bg-slate-50 transition-all"
-                style={{ minHeight: "44px", maxHeight: "120px" }}
-                onInput={(e) => {
-                  const t = e.target as HTMLTextAreaElement;
-                  t.style.height = "44px";
-                  t.style.height = t.scrollHeight + "px";
-                }}
-              />
-            </div>
-            <button
-              onClick={sendMessage}
-              disabled={!input.trim() || loading}
-              className="w-11 h-11 rounded-xl gradient-bg text-white flex items-center justify-center hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer flex-shrink-0 shadow-sm"
-            >
-              <Send size={16} />
-            </button>
-          </div>
-          <p className="text-[10px] text-slate-400 mt-2 text-center">
-            Penn State AI Tutor · Gemini 3.1 Pro via OpenClaw on Raspberry Pi
-          </p>
-        </div>
-      </div>
-    </div>
-  );
+				successCount += 1;
+			} catch {
+				failureCount += 1;
+				failedFiles.push(file);
+			}
+		}
+
+		if (options?.clearStaged) {
+			setStagedFiles(failedFiles);
+		}
+
+		if (successCount > 0) {
+			setUploadNotice(
+				failureCount > 0
+					? `Uploaded ${successCount} file${successCount === 1 ? "" : "s"}. ${failureCount} still need attention.`
+					: `Uploaded ${successCount} file${successCount === 1 ? "" : "s"} to ${courseId}.`
+			);
+
+			if (options?.announceInChat) {
+				setMessages((prev) => [
+					...prev,
+					{
+						role: "assistant",
+						content: `Added ${successCount} new study material file${successCount === 1 ? "" : "s"} to ${courseId}. Ask me anything about the updated library.`,
+					},
+				]);
+			}
+		} else if (failureCount > 0) {
+			setUploadNotice("Upload failed. Check the OpenClaw connection and try again.");
+		}
+
+		await loadBucketFiles();
+		setUploadingFiles(false);
+
+		return { failureCount, successCount };
+	};
+
+	const handleStagedFiles = (incomingFiles: FileList | File[]) => {
+		setStagedFiles((prev) => mergeFiles(prev, Array.from(incomingFiles)));
+	};
+
+	const startChatSession = async () => {
+		if (uploadingFiles) {
+			return;
+		}
+
+		if (stagedFiles.length > 0) {
+			await uploadFiles(stagedFiles, { clearStaged: true });
+		}
+
+		setHasStartedChat(true);
+	};
+
+	const sendMessage = async () => {
+		const text = input.trim();
+		if (!text || chatLoading) {
+			return;
+		}
+
+		const userMsg: Message = { role: "user", content: text };
+		setMessages((prev) => [...prev, userMsg]);
+		setInput("");
+		setChatLoading(true);
+
+		try {
+			const res = await fetch(`${OPEN_CLAW_API}/chat`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					course_id: courseId,
+					message: text,
+					mode,
+					conversation_history: messages.slice(-10),
+				}),
+			});
+
+			if (!res.ok) throw new Error("Failed");
+			const data = await res.json();
+			setMessages((prev) => [
+				...prev,
+				{ role: "assistant", content: data.reply },
+			]);
+		} catch {
+			setMessages((prev) => [
+				...prev,
+				{
+					role: "assistant",
+					content:
+						"Couldn't connect to the Raspberry Pi. Make sure OpenClaw is running on the network.",
+				},
+			]);
+		} finally {
+			setChatLoading(false);
+		}
+	};
+
+	const handleChatFileSelection = async (fileList: FileList | null) => {
+		if (!fileList || fileList.length === 0) {
+			return;
+		}
+
+		await uploadFiles(Array.from(fileList), { announceInChat: true });
+	};
+
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === "Enter" && !e.shiftKey) {
+			e.preventDefault();
+			sendMessage();
+		}
+	};
+
+	return (
+		<div className="min-h-screen bg-slate-50">
+			<WorkspaceHeader courseId={courseId} uploadNotice={uploadNotice} />
+
+			<div className="grid min-h-[calc(100vh-65px)] lg:grid-cols-[320px_minmax(0,1fr)]">
+				<BucketFileExplorer
+					courseId={courseId}
+					error={bucketError}
+					files={bucketFiles}
+					loading={bucketLoading}
+					onRefresh={() => {
+						void loadBucketFiles();
+					}}
+				/>
+
+				<section className="flex min-h-0 flex-col">
+					{!hasStartedChat ? (
+						<ChatIntakePanel
+							courseId={courseId}
+							dragActive={dragActive}
+							onBrowse={() => stagedFileInputRef.current?.click()}
+							onDragLeave={() => setDragActive(false)}
+							onDragOver={(event) => {
+								event.preventDefault();
+								setDragActive(true);
+							}}
+							onDrop={(event) => {
+								event.preventDefault();
+								setDragActive(false);
+								handleStagedFiles(event.dataTransfer.files);
+							}}
+							onFileInputChange={(event) => {
+								if (event.target.files) {
+									handleStagedFiles(event.target.files);
+									event.target.value = "";
+								}
+							}}
+							stagedFileInputRef={stagedFileInputRef}
+							stagedFiles={stagedFiles}
+							uploadNotice={uploadNotice}
+							uploadingFiles={uploadingFiles}
+							onRemoveFile={(index) => {
+								setStagedFiles((prev) => prev.filter((_, fileIndex) => fileIndex !== index));
+							}}
+							onStartChat={() => {
+								void startChatSession();
+							}}
+						/>
+					) : (
+						<ChatSessionPanel
+							bottomRef={bottomRef}
+							chatLoading={chatLoading}
+							chatUploadInputRef={chatUploadInputRef}
+							courseId={courseId}
+							handleChatFileSelection={handleChatFileSelection}
+							handleKeyDown={handleKeyDown}
+							input={input}
+							inputRef={inputRef}
+							messages={messages}
+							mode={mode}
+							onInputChange={setInput}
+							onModeChange={setMode}
+							onPromptSelect={setInput}
+							onSend={() => {
+								void sendMessage();
+							}}
+							uploadingFiles={uploadingFiles}
+						/>
+					)}
+				</section>
+			</div>
+		</div>
+	);
 }
 
 export default function ChatPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-400 text-sm">
-          Loading...
-        </div>
-      }
-    >
-      <ChatInner />
-    </Suspense>
-  );
+	return (
+		<Suspense
+			fallback={
+				<div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-400 text-sm">
+					Loading...
+				</div>
+			}
+		>
+			<ChatInner />
+		</Suspense>
+	);
 }
