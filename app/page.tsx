@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 import { Upload, Wifi, Sparkles, ChevronRight, GraduationCap, BookOpen, Users, FileText } from "lucide-react";
 
 import { Course } from "@/lib/models";
+import Footer from "@/components/footer";
 
 export default function Home() {
 	const [courses, setCourses] = useState([] as Course[]);
@@ -173,30 +174,7 @@ export default function Home() {
 					</div>
 				</div>
 
-				{/* Footer */}
-				<footer
-					className="mt-6 pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-400 animate-fade-up"
-					style={{ animationDelay: "0.6s" }}
-				>
-					<div className="flex items-center gap-2">
-						<img
-							src="/veritcal-2-mark_registered.png"
-							alt="Penn State shield"
-							className="w-4 h-4 object-contain"
-							onError={(e) => {
-								(e.target as HTMLImageElement).style.display = "none";
-							}}
-						/>
-						<span className="font-semibold text-navy-700">Penn State</span>
-						<span className="text-slate-300">·</span>
-						<span>AI Academic Assistant</span>
-					</div>
-					<div className="flex items-center gap-4 font-mono">
-						<span>OpenClaw Gemini 3.1 Pro</span>
-						<span className="text-slate-300">·</span>
-						<span>Google Cloud Compute Engine</span>
-					</div>
-				</footer>
+				<Footer/>
 			</div>
 		</div>
 	);
